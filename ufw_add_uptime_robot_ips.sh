@@ -31,9 +31,14 @@ ufw_delete_ip () {
 }
 
 ufw_purge_rules () {
-    ips=$(sudo ufw status | grep 'Uptime Robot' | awk '{print $3}')
-    for ip in $ips; do
-        ufw_delete_ip "$ip"
+    while true; do
+        line=$(sudo ufw status numbered | grep '# Uptime Robot' | head -n 1)
+        if [ -z "$line" ]; then
+            break
+        fi
+        number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
+        sudo ufw --force delete "$number"
+        ufw_deleted=$((ufw_deleted+1))
         show_purge_progress $ufw_deleted
     done
 }
@@ -75,7 +80,13 @@ total_ips=$(echo "$ips" | wc -l)
 current_ip=0
 
 for ip in $ips; do
-    ufw_add_ip "$ip"
+    if [[ $ip =~ : ]]; then
+        # IPv6 address
+        ufw_add_ip "$ip"
+    else
+        # IPv4 address
+        ufw_add_ip "$ip"
+    fi
     current_ip=$((current_ip + 1))
     show_progress $current_ip $total_ips $ufw_deleted $ufw_created $ufw_ignored
 done
