@@ -56,7 +56,7 @@ ufw_delete_ipv4_rules () {
     for ip in $ips; do
         ufw_delete_ip "$ip"
         current=$((current + 1))
-        show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
+        show_progress $current $total
     done
 }
 
@@ -72,16 +72,14 @@ ufw_delete_ipv6_rules () {
 }
 
 show_progress() {
-    local deleted=$ufw_deleted
-    local created=$ufw_created
-    local ignored=$ufw_ignored
-    local total=$((deleted + created + ignored))
-    local progress=$((total * 100 / (total + 1)))
+    local current=$1
+    local total=$2
+    local progress=$((current * 100 / total))
     local done=$((progress * 4 / 10))
     local left=$((40 - done))
     local fill=$(printf "%${done}s")
     local empty=$(printf "%${left}s")
-    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%% - \033[32mCreated: $created\033[0m \033[33mIgnored: $ignored\033[0m \033[31mDeleted: $deleted\033[0m"
+    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%% - \033[32mCreated: $ufw_created\033[0m \033[33mIgnored: $ufw_ignored\033[0m \033[31mDeleted: $ufw_deleted\033[0m"
 }
 
 if [ "$1" = "--purge" ]; then
