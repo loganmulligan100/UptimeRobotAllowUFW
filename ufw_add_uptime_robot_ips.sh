@@ -20,13 +20,15 @@ ufw_add_ip () {
 }
 
 ufw_purge_rules () {
-    while IFS= read -r line; do
-        if echo "$line" | grep -q '# Uptime Robot'; then
-            number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
-            sudo ufw --force delete "$number"
-            ufw_deleted=$((ufw_deleted+1))
-        fi
-    done < <(sudo ufw status numbered)
+    # First, get all the lines containing "Uptime Robot" with their line numbers
+    sudo ufw status numbered | grep '# Uptime Robot' | while read -r line; do
+        # Extract the rule number
+        number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
+        # Delete the rule by number
+        sudo ufw --force delete "$number"
+        ufw_deleted=$((ufw_deleted+1))
+        show_purge_progress $ufw_deleted
+    done
 }
 
 show_progress() {
@@ -43,6 +45,11 @@ show_progress() {
     printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%%"
     echo -e "\n\033[32mCreated: $created\033[0m"
     echo -e "\033[33mIgnored: $ignored\033[0m"
+    echo -e "\033[31mDeleted: $deleted\033[0m"
+}
+
+show_purge_progress() {
+    local deleted=$1
     echo -e "\033[31mDeleted: $deleted\033[0m"
 }
 
