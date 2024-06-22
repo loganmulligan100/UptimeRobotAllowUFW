@@ -43,6 +43,11 @@ You can run the script directly from GitHub using the following command:
 ```bash
 curl -s https://raw.githubusercontent.com/loganmulligan100/UptimeRobotAllowUFW/main/ufw_add_uptime_robot_ips.sh | bash
 ```
+To remove Run | IPV6 Currently not working. 
+```bash
+curl -s https://raw.githubusercontent.com/loganmulligan100/UptimeRobotAllowUFW/main/ufw_add_uptime_robot_ips.sh | bash -s -- --purge
+```
+
 Alternatively, you can run the script locally if you have cloned the repository or downloaded the script:
 ```bash
 ./ufw_add_uptime_robot_ips.sh
