@@ -46,7 +46,14 @@ ufw_purge_rules () {
             break
         fi
         number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
-        sudo ufw --force delete "$number"
+        ip=$(echo "$line" | awk '{print $4}')
+        if [[ $ip =~ : ]]; then
+            # Handle IPv6
+            sudo ufw --force delete "$number"
+        else
+            # Handle IPv4
+            sudo ufw --force delete "$number"
+        fi
         ufw_deleted=$((ufw_deleted+1))
         current=$((current + 1))
         show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
