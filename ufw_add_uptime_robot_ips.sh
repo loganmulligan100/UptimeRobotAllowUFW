@@ -23,10 +23,10 @@ ufw_delete_ip () {
     if [ ! -z "$1" ]; then
         if [[ $1 =~ : ]]; then
             # IPv6 address
-            rule=$(LC_ALL=C sudo ufw delete allow from "$1" comment "Uptime Robot")
+            rule=$(LC_ALL=C sudo ufw delete allow from "$1")
         else
             # IPv4 address
-            rule=$(LC_ALL=C sudo ufw delete allow from "$1" comment "Uptime Robot")
+            rule=$(LC_ALL=C sudo ufw delete allow from "$1")
         fi
         if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
             ufw_deleted=$((ufw_deleted+1))
@@ -46,14 +46,7 @@ ufw_purge_rules () {
             break
         fi
         number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
-        ip=$(echo "$line" | awk '{print $6}')
-        if [[ $ip =~ : ]]; then
-            # Handle IPv6
-            sudo ufw --force delete "$number"
-        else
-            # Handle IPv4
-            sudo ufw --force delete "$number"
-        fi
+        sudo ufw --force delete "$number"
         ufw_deleted=$((ufw_deleted+1))
         current=$((current + 1))
         show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
