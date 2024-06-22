@@ -46,12 +46,16 @@ ufw_delete_ipv4_rules () {
 }
 
 ufw_delete_ipv6_rules () {
-    while true; do
-        rule_id=$(sudo ufw status numbered | awk '/Anywhere \(v6\)/{print $1}' | tr -d '[]' | head -n 1)
-        if [ -z "$rule_id" ]; then
-            break
+    ips=$(curl -s $UPTIME_ROBOT_IPV6_URL | tr '\r' '\n' | tr -s '\n')
+    for ip in $ips; do
+        rule=$(LC_ALL=C sudo ufw delete allow from "$ip")
+        if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
+            ufw_deleted=$((ufw_deleted+1))
+            echo -n "\e[31m-\e[39m"
+        else
+            ufw_ignored=$((ufw_ignored+1))
+            echo -n "\e[90m.\e[39m"
         fi
-        ufw_delete_rule_by_id "$rule_id"
         show_progress
     done
 }
