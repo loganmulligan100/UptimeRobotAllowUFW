@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # URL to fetch the list of Uptime Robot IP addresses
 UPTIME_ROBOT_IPS_URL="https://uptimerobot.com/inc/files/ips/IPv4andIPv6.txt"
@@ -19,16 +19,30 @@ ufw_add_ip () {
     ufw_ignored=$((ufw_ignored+1))
 }
 
-ufw_purge_rules () {
-    while true; do
-        line=$(sudo ufw status numbered | grep '# Uptime Robot' | head -n 1)
-        if [ -z "$line" ]; then
-            break
+ufw_delete_ip () {
+    if [ ! -z "$1" ]; then
+        rule=$(LC_ALL=C sudo ufw delete allow from $1)
+        if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
+            ufw_deleted=$((ufw_deleted+1))
+            return
         fi
-        number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
-        sudo ufw --force delete "$number"
-        ufw_deleted=$((ufw_deleted+1))
-        show_purge_progress $ufw_deleted
+    fi
+    ufw_ignored=$((ufw_ignored+1))
+}
+
+ufw_purge_rules () {
+    total="$(sudo ufw status numbered | awk '/# Uptime Robot$/ {++count} END {print count}')"
+    i=1
+
+    if [ -z "$total" ]; then
+        ufw_deleted=0
+        return
+    fi
+
+    while [ $i -le $total ]; do
+        ip=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $6; exit}')
+        ufw_delete_ip "$ip"
+        i=$((i+1))
     done
 }
 
@@ -44,7 +58,9 @@ show_progress() {
     local fill=$(printf "%${done}s")
     local empty=$(printf "%${left}s")
     printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%%"
-    printf "\r\033[32mCreated: $created\033[0m \033[33mIgnored: $ignored\033[0m \033[31mDeleted: $deleted\033[0m"
+    printf "\n\033[32mCreated: $created\033[0m"
+    printf "\n\033[33mIgnored: $ignored\033[0m"
+    printf "\n\033[31mDeleted: $deleted\033[0m"
 }
 
 show_purge_progress() {
@@ -52,7 +68,7 @@ show_purge_progress() {
     printf "\r\033[31mDeleted: $deleted\033[0m"
 }
 
-if [ "$1" == "--purge" ]; then
+if [ "$1" = "--purge" ]; then
     ufw_purge_rules
     echo ''
     echo -e "\033[32mTotal rules created: ${ufw_created}\033[0m"
