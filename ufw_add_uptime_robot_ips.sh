@@ -10,7 +10,7 @@ ufw_ignored=0
 
 ufw_add_ip () {
     if [ ! -z "$1" ]; then
-        rule=$(LC_ALL=C sudo ufw allow from $1 comment "Uptime Robot")
+        rule=$(LC_ALL=C sudo ufw allow from "$1" comment "Uptime Robot")
         if [[ "$rule" == *"Rule added"* ]] || [[ "$rule" == *"Rule added (v6)"* ]]; then
             ufw_created=$((ufw_created+1))
             return
@@ -21,7 +21,7 @@ ufw_add_ip () {
 
 ufw_delete_ip () {
     if [ ! -z "$1" ]; then
-        rule=$(LC_ALL=C sudo ufw delete allow from $1)
+        rule=$(LC_ALL=C sudo ufw delete allow from "$1")
         if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
             ufw_deleted=$((ufw_deleted+1))
             return
@@ -31,18 +31,10 @@ ufw_delete_ip () {
 }
 
 ufw_purge_rules () {
-    total="$(sudo ufw status numbered | awk '/# Uptime Robot$/ {++count} END {print count}')"
-    i=1
-
-    if [ -z "$total" ]; then
-        ufw_deleted=0
-        return
-    fi
-
-    while [ $i -le $total ]; do
-        ip=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $6; exit}')
+    ips=$(sudo ufw status | grep 'Uptime Robot' | awk '{print $3}')
+    for ip in $ips; do
         ufw_delete_ip "$ip"
-        i=$((i+1))
+        show_purge_progress $ufw_deleted
     done
 }
 
