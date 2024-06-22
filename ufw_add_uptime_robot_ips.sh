@@ -20,12 +20,13 @@ ufw_add_ip () {
     ufw_ignored=$((ufw_ignored+1))
 }
 
-ufw_delete_ip () {
-    if [ ! -z "$1" ]; then
-        rule=$(LC_ALL=C && sudo ufw delete allow from "$1")
+ufw_delete_rule_by_id () {
+    local rule_id="$1"
+    if [ ! -z "$rule_id" ]; then
+        rule=$(LC_ALL=C sudo ufw --force delete "$rule_id")
         if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
-            echo -n "\e[31m-\e[39m"
             ufw_deleted=$((ufw_deleted+1))
+            echo -n "\e[31m-\e[39m"
             return
         fi
     fi
@@ -33,19 +34,14 @@ ufw_delete_ip () {
     ufw_ignored=$((ufw_ignored+1))
 }
 
-ufw_purge_rules () {
-    total="$(sudo ufw status numbered | awk '/# Uptime Robot$/ {++count} END {print count}')"
-    i=1
-
-    if [ -z $total ]; then
-        ufw_deleted=0
-        return
-    fi
-
-    while [ $i -le $total ]; do
-        ufwip=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $6; exit}')
-        ufw_delete_ip $ufwip
-        i=$((i+1))
+ufw_delete_ipv4_rules () {
+    while true; do
+        rule_id=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $1}' | tr -d '[]' | head -n 1)
+        if [ -z "$rule_id" ]; then
+            break
+        fi
+        ufw_delete_rule_by_id "$rule_id"
+        show_progress
     done
 }
 
@@ -66,22 +62,29 @@ ufw_delete_ipv6_rules () {
     done
 }
 
+ufw_delete_ip () {
+    if [ ! -z "$1" ]; then
+        rule=$(LC_ALL=C sudo ufw delete allow from "$1")
+        if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
+            ufw_deleted=$((ufw_deleted+1))
+            return
+        fi
+    fi
+    ufw_ignored=$((ufw_ignored+1))
+}
+
 show_progress() {
-    local current=$1
-    local total=$2
-    local deleted=$3
-    local created=$4
-    local ignored=$5
-    local progress=$((current * 100 / total))
+    local progress=$((ufw_deleted + ufw_ignored + ufw_created))
+    local total=$((ufw_deleted + ufw_ignored + ufw_created))
     local done=$((progress * 4 / 10))
     local left=$((40 - done))
     local fill=$(printf "%${done}s")
     local empty=$(printf "%${left}s")
-    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%% - \033[32mCreated: $created\033[0m \033[33mIgnored: $ignored\033[0m \033[31mDeleted: $deleted\033[0m"
+    printf "\rProgress: [${fill// /#}${empty// /-}] - \033[32mCreated: $ufw_created\033[0m \033[33mIgnored: $ufw_ignored\033[0m \033[31mDeleted: $ufw_deleted\033[0m"
 }
 
 if [ "$1" = "--purge" ]; then
-    ufw_purge_rules
+    ufw_delete_ipv4_rules
     ufw_delete_ipv6_rules
     echo ''
     echo -e "\033[32mTotal rules created: ${ufw_created}\033[0m"
@@ -98,7 +101,7 @@ current_ip=0
 for ip in $ips; do
     ufw_add_ip "$ip"
     current_ip=$((current_ip + 1))
-    show_progress $current_ip $total_ips $ufw_deleted $ufw_created $ufw_ignored
+    show_progress
 done
 echo ""
 sudo ufw reload
