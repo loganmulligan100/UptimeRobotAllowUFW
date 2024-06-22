@@ -51,12 +51,7 @@ ufw_delete_ipv6_rules () {
     current=0
 
     for ip in $ips; do
-        if [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$ ]]; then
-            ufw_delete_ip "$ip"
-        else
-            echo -e "\033[33mIgnored invalid IPv6 address: $ip\033[0m"
-            ufw_ignored=$((ufw_ignored+1))
-        fi
+        ufw_delete_ip "$ip"
         current=$((current + 1))
         show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
     done
@@ -74,13 +69,17 @@ ufw_delete_ip () {
 }
 
 show_progress() {
-    local progress=$((ufw_deleted + ufw_ignored + ufw_created))
-    local total=$((ufw_deleted + ufw_ignored + ufw_created))
+    local current=$1
+    local total=$2
+    local deleted=$3
+    local created=$4
+    local ignored=$5
+    local progress=$((current * 100 / total))
     local done=$((progress * 4 / 10))
     local left=$((40 - done))
     local fill=$(printf "%${done}s")
     local empty=$(printf "%${left}s")
-    printf "\rProgress: [${fill// /#}${empty// /-}] - \033[32mCreated: $ufw_created\033[0m \033[33mIgnored: $ufw_ignored\033[0m \033[31mDeleted: $ufw_deleted\033[0m"
+    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%% - \033[32mCreated: $created\033[0m \033[33mIgnored: $ignored\033[0m \033[31mDeleted: $deleted\033[0m"
 }
 
 if [ "$1" = "--purge" ]; then
@@ -101,7 +100,7 @@ current_ip=0
 for ip in $ips; do
     ufw_add_ip "$ip"
     current_ip=$((current_ip + 1))
-    show_progress
+    show_progress $current_ip $total_ips $ufw_deleted $ufw_created $ufw_ignored
 done
 echo ""
 sudo ufw reload
