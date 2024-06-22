@@ -20,8 +20,8 @@ while read -r ip; do
     # Trim any leading or trailing whitespace from the IP address
     ip=$(echo $ip | xargs)
     
-    # Validate the IP address format (both IPv4 and IPv6)
-    if [[ $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,7}:$ ]] || [[ $ip =~ ^::([0-9a-fA-F]{1,4}:){1,6}[0-9a-fA-F]{1,4}$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,6}:$ ]] || [[ $ip =~ ^:([0-9a-fA-F]{1,4}:){1,5}[0-9a-fA-F]{1,4}$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,5}:$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,4}$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,5}$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,6}$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1}(:[0-9a-fA-F]{1,4}){1,7}$ ]] || [[ $ip =~ ^(:[0-9a-fA-F]{1,4}){1,7}:$ ]]; then
+    # Validate the IP address format (both IPv4 and IPv6 with CIDR)
+    if [[ $ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$ ]] || [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}(/[0-9]{1,3})?$ ]]; then
         sudo ufw allow from $ip comment "Uptime Robot"
         if [ $? -ne 0 ]; then
             echo "Failed to add IP: $ip"
