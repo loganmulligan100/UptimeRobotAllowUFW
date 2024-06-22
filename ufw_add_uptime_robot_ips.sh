@@ -62,7 +62,7 @@ ufw_delete_ipv4_rules () {
 
 ufw_delete_ipv6_rules () {
     while true; do
-        rule_id=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $1}' | tr -d '[]' | head -n 1)
+        rule_id=$(sudo ufw status numbered | awk '/Anywhere \(v6\)/{print $1}' | tr -d '[]' | head -n 1)
         if [ -z "$rule_id" ]; then
             break
         fi
