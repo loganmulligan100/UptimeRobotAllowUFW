@@ -80,6 +80,7 @@ if [ "$1" = "--purge" ]; then
     exit 0
 fi
 
+# Add IPv4 rules
 ips=$(curl -s $UPTIME_ROBOT_IPV4_URL | tr '\r' '\n' | tr -s '\n')
 total_ips=$(echo "$ips" | wc -l)
 current_ip=0
@@ -87,8 +88,20 @@ current_ip=0
 for ip in $ips; do
     ufw_add_ip "$ip"
     current_ip=$((current_ip + 1))
-    show_progress $current_ip $total_ips $ufw_deleted $ufw_created $ufw_ignored
+    show_progress $current_ip $total_ips
 done
+
+# Add IPv6 rules
+ips=$(curl -s $UPTIME_ROBOT_IPV6_URL | tr '\r' '\n' | tr -s '\n')
+total_ips=$(echo "$ips" | wc -l)
+current_ip=0
+
+for ip in $ips; do
+    ufw_add_ip "$ip"
+    current_ip=$((current_ip + 1))
+    show_progress $current_ip $total_ips
+done
+
 echo ""
 sudo ufw reload
 
