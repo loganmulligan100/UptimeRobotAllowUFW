@@ -31,6 +31,9 @@ ufw_delete_ip () {
 }
 
 ufw_purge_rules () {
+    total=$(sudo ufw status numbered | grep -c '# Uptime Robot')
+    current=0
+
     while true; do
         line=$(sudo ufw status numbered | grep '# Uptime Robot' | head -n 1)
         if [ -z "$line" ]; then
@@ -39,7 +42,8 @@ ufw_purge_rules () {
         number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
         sudo ufw --force delete "$number"
         ufw_deleted=$((ufw_deleted+1))
-        show_purge_progress $ufw_deleted
+        current=$((current + 1))
+        show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
     done
 }
 
@@ -54,15 +58,7 @@ show_progress() {
     local left=$((40 - done))
     local fill=$(printf "%${done}s")
     local empty=$(printf "%${left}s")
-    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%%"
-    printf "\n\033[32mCreated: $created\033[0m"
-    printf "\n\033[33mIgnored: $ignored\033[0m"
-    printf "\n\033[31mDeleted: $deleted\033[0m"
-}
-
-show_purge_progress() {
-    local deleted=$1
-    printf "\r\033[31mDeleted: $deleted\033[0m"
+    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%% - \033[32mCreated: $created\033[0m \033[33mIgnored: $ignored\033[0m \033[31mDeleted: $deleted\033[0m"
 }
 
 if [ "$1" = "--purge" ]; then
