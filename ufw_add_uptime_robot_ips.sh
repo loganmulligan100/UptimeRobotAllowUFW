@@ -43,7 +43,12 @@ ufw_delete_ipv6_rules () {
     current=0
 
     for ip in $ips; do
-        ufw_delete_ip "$ip"
+        if [[ $ip =~ ^([0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}$ ]]; then
+            ufw_delete_ip "$ip"
+        else
+            echo -e "\033[33mIgnored invalid IPv6 address: $ip\033[0m"
+            ufw_ignored=$((ufw_ignored+1))
+        fi
         current=$((current + 1))
         show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
     done
