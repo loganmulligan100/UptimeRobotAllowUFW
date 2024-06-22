@@ -37,22 +37,25 @@ ufw_delete_ip () {
 ufw_purge_rules () {
     while IFS= read -r line; do
         if echo "$line" | grep -q '# Uptime Robot'; then
-            number=$(echo "$line" | grep -o '^\[ *[0-9]*\]' | tr -d '[] ')
+            number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
             sudo ufw --force delete "$number"
             ufw_deleted=$((ufw_deleted+1))
+            show_progress "$number" "$ufw_deleted" "$ufw_created" "$ufw_ignored"
         fi
     done < <(sudo ufw status numbered)
 }
 
 show_progress() {
     local current=$1
-    local total=$2
-    local progress=$((current * 100 / total))
+    local deleted=$2
+    local created=$3
+    local ignored=$4
+    local progress=$((current * 100 / total_ips))
     local done=$((progress * 4 / 10))
     local left=$((40 - done))
     local fill=$(printf "%${done}s")
     local empty=$(printf "%${left}s")
-    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%%"
+    printf "\rProgress: [${fill// /#}${empty// /-}] ${progress}%% - Deleted: $deleted, Created: $created, Ignored: $ignored"
 }
 
 if [ "$1" = "--purge" ]; then
@@ -65,7 +68,7 @@ else
     for ip in $ips; do
         ufw_add_ip "$ip"
         current_ip=$((current_ip + 1))
-        show_progress $current_ip $total_ips
+        show_progress $current_ip $ufw_deleted $ufw_created $ufw_ignored
     done
     echo ""
     sudo ufw reload
