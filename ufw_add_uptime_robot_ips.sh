@@ -16,7 +16,7 @@ fi
 # Read and add each IP to UFW
 while IFS= read -r ip; do
     if [[ ! -z "$ip" ]]; then
-        sudo ufw allow from $ip comment "Uptime Robot"
+        sudo ufw allow from $ip
         echo "Allowed IP: $ip"
     fi
 done < "$TEMP_IP_FILE"
