@@ -20,20 +20,32 @@ ufw_add_ip () {
     ufw_ignored=$((ufw_ignored+1))
 }
 
-ufw_delete_ipv4_rules () {
-    total=$(sudo ufw status numbered | grep -c '# Uptime Robot')
-    current=0
-
-    while true; do
-        line=$(sudo ufw status numbered | grep '# Uptime Robot' | head -n 1)
-        if [ -z "$line" ]; then
-            break
+ufw_delete_ip () {
+    if [ ! -z "$1" ]; then
+        rule=$(LC_ALL=C && sudo ufw delete allow from "$1")
+        if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
+            echo -n "\e[31m-\e[39m"
+            ufw_deleted=$((ufw_deleted+1))
+            return
         fi
-        number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
-        sudo ufw --force delete "$number"
-        ufw_deleted=$((ufw_deleted+1))
-        current=$((current + 1))
-        show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
+    fi
+    echo -n "\e[90m.\e[39m"
+    ufw_ignored=$((ufw_ignored+1))
+}
+
+ufw_purge_rules () {
+    total="$(sudo ufw status numbered | awk '/# Uptime Robot$/ {++count} END {print count}')"
+    i=1
+
+    if [ -z $total ]; then
+        ufw_deleted=0
+        return
+    fi
+
+    while [ $i -le $total ]; do
+        ufwip=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $6; exit}')
+        ufw_delete_ip $ufwip
+        i=$((i+1))
     done
 }
 
@@ -54,17 +66,6 @@ ufw_delete_ipv6_rules () {
     done
 }
 
-ufw_delete_ip () {
-    if [ ! -z "$1" ]; then
-        rule=$(LC_ALL=C sudo ufw delete allow from "$1")
-        if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
-            ufw_deleted=$((ufw_deleted+1))
-            return
-        fi
-    fi
-    ufw_ignored=$((ufw_ignored+1))
-}
-
 show_progress() {
     local current=$1
     local total=$2
@@ -80,7 +81,7 @@ show_progress() {
 }
 
 if [ "$1" = "--purge" ]; then
-    ufw_delete_ipv4_rules
+    ufw_purge_rules
     ufw_delete_ipv6_rules
     echo ''
     echo -e "\033[32mTotal rules created: ${ufw_created}\033[0m"
