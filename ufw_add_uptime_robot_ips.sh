@@ -21,7 +21,13 @@ ufw_add_ip () {
 
 ufw_delete_ip () {
     if [ ! -z "$1" ]; then
-        rule=$(LC_ALL=C sudo ufw delete allow from "$1")
+        if [[ $1 =~ : ]]; then
+            # IPv6 address
+            rule=$(LC_ALL=C sudo ufw delete allow from "$1" comment "Uptime Robot")
+        else
+            # IPv4 address
+            rule=$(LC_ALL=C sudo ufw delete allow from "$1" comment "Uptime Robot")
+        fi
         if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
             ufw_deleted=$((ufw_deleted+1))
             return
