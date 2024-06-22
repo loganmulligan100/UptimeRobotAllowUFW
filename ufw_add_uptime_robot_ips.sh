@@ -34,6 +34,20 @@ ufw_delete_ip () {
     ufw_ignored=$((ufw_ignored+1))
 }
 
+ufw_delete_rule_by_id () {
+    local rule_id="$1"
+    if [ ! -z "$rule_id" ]; then
+        rule=$(LC_ALL=C sudo ufw --force delete "$rule_id")
+        if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
+            ufw_deleted=$((ufw_deleted+1))
+            echo -n "\e[31m-\e[39m"
+            return
+        fi
+    fi
+    echo -n "\e[90m.\e[39m"
+    ufw_ignored=$((ufw_ignored+1))
+}
+
 ufw_delete_ipv4_rules () {
     ips=$(curl -s $UPTIME_ROBOT_IPV4_URL | tr '\r' '\n' | tr -s '\n')
     total=$(echo "$ips" | wc -l)
@@ -48,7 +62,7 @@ ufw_delete_ipv4_rules () {
 
 ufw_delete_ipv6_rules () {
     while true; do
-        rule_id=$(sudo ufw status numbered | awk '/Anywhere \(v6\)/{print $1}' | tr -d '[]' | head -n 1)
+        rule_id=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $1}' | tr -d '[]' | head -n 1)
         if [ -z "$rule_id" ]; then
             break
         fi
