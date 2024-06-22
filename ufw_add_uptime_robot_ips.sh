@@ -11,7 +11,7 @@ ufw_ignored=0
 ufw_add_ip () {
     if [ ! -z "$1" ]; then
         rule=$(LC_ALL=C sudo ufw allow from $1 comment "Uptime Robot")
-        if [[ "$rule" == *"Rule added"* ]]; then
+        if [[ "$rule" == *"Rule added"* ]] || [[ "$rule" == *"Rule added (v6)"* ]]; then
             ufw_created=$((ufw_created+1))
             return
         fi
@@ -22,7 +22,7 @@ ufw_add_ip () {
 ufw_purge_rules () {
     while IFS= read -r line; do
         if echo "$line" | grep -q '# Uptime Robot'; then
-            number=$(echo "$line" | grep -o '^\[ *[0-9]*\]' | tr -d '[] ')
+            number=$(echo "$line" | awk '{print $1}' | tr -d '[]')
             sudo ufw --force delete "$number"
             ufw_deleted=$((ufw_deleted+1))
         fi
