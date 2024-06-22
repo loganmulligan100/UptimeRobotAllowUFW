@@ -1,42 +1,80 @@
-#!/bin/bash
+#!/bin/sh
 
 # URL to fetch the list of Uptime Robot IP addresses
-UPTIME_ROBOT_IPS_URL="https://uptimerobot.com/inc/files/ips/IPv4.txt"
+UPTIME_ROBOT_IPS_URL="https://uptimerobot.com/inc/files/ips/IPv4andIPv6.txt"
 
-# Temporary file to store the list of IP addresses
-TEMP_IP_LIST="/tmp/uptimerobot_ips.txt"
+# Initialize counters
+ufw_deleted=0
+ufw_created=0
+ufw_ignored=0
 
-# Fetch the list of IP addresses
-curl -s $UPTIME_ROBOT_IPS_URL -o $TEMP_IP_LIST
+ufw_add_ip () {
+    if [ ! -z "$1" ]; then
+        rule=$(LC_ALL=C sudo ufw allow from $1 comment "Uptime Robot")
 
-# Check if the download was successful
-if [ $? -ne 0 ]; then
-    echo "Failed to download the list of Uptime Robot IP addresses."
-    exit 1
+        if [ "$rule" = 'Rule added' ] || [ "$rule" = 'Rule added (v6)' ]; then
+            printf "+"
+            ufw_created=$((ufw_created+1))
+            return
+        fi
+    fi
+
+    printf "."
+    ufw_ignored=$((ufw_ignored+1))
+}
+
+ufw_delete_ip () {
+    if [ ! -z "$1" ]; then
+        rule=$(LC_ALL=C sudo ufw delete allow from $1)
+
+        if [ "$rule" = 'Rule deleted' ] || [ "$rule" = 'Rule deleted (v6)' ]; then
+            printf "-"
+            ufw_deleted=$((ufw_deleted+1))
+            return
+        fi
+    fi
+
+    printf "."
+    ufw_ignored=$((ufw_ignored+1))
+}
+
+ufw_purge_rules () {
+    total=$(sudo ufw status numbered | awk '/# Uptime Robot$/ {++count} END {print count}')
+    i=1
+
+    if [ -z "$total" ]; then
+        ufw_deleted=0
+        return
+    fi
+
+    while [ $i -le $total ]; do
+        ip=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $6; exit}')
+        ufw_delete_ip $ip
+        i=$((i+1))
+    done
+}
+
+if [ "$1" = "--purge" ]; then
+    ufw_purge_rules
+else
+    ips=$(curl -s $UPTIME_ROBOT_IPS_URL | tr '\r' '\n' | tr -s '\n')
+    total_ips=$(echo "$ips" | wc -l)
+    current_ip=0
+
+    for ip in $ips; do
+        ufw_add_ip "$ip"
+        current_ip=$((current_ip + 1))
+        printf "\rAdding IPs: %d/%d" $current_ip $total_ips
+    done
+    echo ""
+    sudo ufw reload
 fi
 
-# Read each IP address from the downloaded list and add it to UFW rules
-while read -r ip; do
-    # Trim any leading or trailing whitespace from the IP address
-    ip=$(echo $ip | xargs)
-    
-    # Validate the IP address format (both IPv4 and IPv6 with CIDR)
-    if [[ $ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$ ]] || [[ $ip =~ ^([0-9a-fA-F]{0,4}:){2,7}([0-9a-fA-F]{0,4})?(/[0-9]{1,3})?$ ]]; then
-        sudo ufw allow from $ip comment "Uptime Robot"
-        if [ $? -ne 0 ]; then
-            echo "Failed to add IP: $ip"
-        else
-            echo "Added IP: $ip"
-        fi
-    else
-        echo "Invalid IP address format: $ip"
-    fi
-done < $TEMP_IP_LIST
-
-# Reload UFW to apply the new rules
-sudo ufw reload
+echo ''
+echo "Total rules deleted: ${ufw_deleted}"
+echo "Total rules created: ${ufw_created}"
+echo "Total rules ignored: ${ufw_ignored}"
+echo 'Done.'
 
 # Clean up by removing the temporary IP list file
 rm -f $TEMP_IP_LIST
-
-echo "Uptime Robot IP addresses have been added to UFW rules."
