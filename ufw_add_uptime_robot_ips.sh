@@ -35,19 +35,13 @@ ufw_delete_ip () {
 }
 
 ufw_purge_rules () {
-    total=$(sudo ufw status numbered | awk '/# Uptime Robot$/ {++count} END {print count}')
-    i=1
-
-    if [ -z "$total" ]; then
-        ufw_deleted=0
-        return
-    fi
-
-    while [ $i -le $total ]; do
-        ip=$(sudo ufw status numbered | awk '/# Uptime Robot$/{print $6; exit}')
-        ufw_delete_ip $ip
-        i=$((i+1))
-    done
+    while IFS= read -r line; do
+        if echo "$line" | grep -q '# Uptime Robot'; then
+            number=$(echo "$line" | grep -o '^\[ *[0-9]*\]' | tr -d '[] ')
+            sudo ufw --force delete "$number"
+            ufw_deleted=$((ufw_deleted+1))
+        fi
+    done < <(sudo ufw status numbered)
 }
 
 show_progress() {
