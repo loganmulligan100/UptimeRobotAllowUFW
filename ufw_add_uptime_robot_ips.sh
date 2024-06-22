@@ -46,35 +46,22 @@ ufw_delete_ipv4_rules () {
 }
 
 ufw_delete_ipv6_rules () {
-    ips=$(curl -s $UPTIME_ROBOT_IPV6_URL | tr '\r' '\n' | tr -s '\n')
-    total=$(echo "$ips" | wc -l)
-    current=0
-
-    for ip in $ips; do
-        ufw_delete_ip "$ip"
-        current=$((current + 1))
-        show_progress $current $total $ufw_deleted $ufw_created $ufw_ignored
+    while true; do
+        rule_id=$(sudo ufw status numbered | awk '/Anywhere \(v6\)/{print $1}' | tr -d '[]' | head -n 1)
+        if [ -z "$rule_id" ]; then
+            break
+        fi
+        ufw_delete_rule_by_id "$rule_id"
+        show_progress
     done
 }
 
-ufw_delete_ip () {
-    if [ ! -z "$1" ]; then
-        rule=$(LC_ALL=C sudo ufw delete allow from "$1")
-        if [[ "$rule" == *"Rule deleted"* ]] || [[ "$rule" == *"Rule deleted (v6)"* ]]; then
-            ufw_deleted=$((ufw_deleted+1))
-            return
-        fi
-    fi
-    ufw_ignored=$((ufw_ignored+1))
-}
-
 show_progress() {
-    local current=$1
-    local total=$2
-    local deleted=$3
-    local created=$4
-    local ignored=$5
-    local progress=$((current * 100 / total))
+    local deleted=$ufw_deleted
+    local created=$ufw_created
+    local ignored=$ufw_ignored
+    local total=$((deleted + created + ignored))
+    local progress=$((total * 100 / (total + 1)))
     local done=$((progress * 4 / 10))
     local left=$((40 - done))
     local fill=$(printf "%${done}s")
